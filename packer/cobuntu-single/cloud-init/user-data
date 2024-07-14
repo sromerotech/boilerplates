@@ -1,0 +1,30 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US
+  keyboard:
+    layout: es
+  ssh:
+    install-server: true
+    allow-pw: false
+  late-commands:
+    - |
+      if [ -d /sys/firmware/efi ]; then
+        apt-get install -y efibootmgr
+        efibootmgr -o $(efibootmgr | perl -n -e '/Boot(.+)\* Ubuntu/ && print $1')
+      fi
+  user-data:
+    preserve_hostname: false
+    hostname: coco-1
+    package_upgrade: true
+    timezone: Europe/Madrid
+    users:
+      - name: root
+        lock-passwd: true
+      - name: cobuntu
+        lock-passwd: true
+        groups: [sudo]
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        shell: /bin/bash
+ssh_keys:
+  ed25519_public: $PC_PUBLIC_KEY

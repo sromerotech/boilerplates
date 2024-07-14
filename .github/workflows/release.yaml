@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - development
+
+env:
+  PACKER_VERSION: "1.10.3"
+  COBUNTU_HCL_PATH: "./packer/cobuntu-single/cobuntu.pkr.hcl"
+
+jobs:
+  test-packer:
+    name: Test Packer files
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup packer
+        uses: hashicorp/setup-packer@main
+        id: setup
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Run `packer init`
+        id: init
+        run: packer init ${{ env.COBUNTU_HCL_PATH }}
+
+      - name: Run `packer validate`
+        id: validate
+        run: packer validate ${{ env.COBUNTU_HCL_PATH }}
+
+  build-packer:
+    name: Build Cobuntu Image
+    runs-on: ubuntu-24.04
+    needs:
+      - test-packer
+    steps:
+      - name: Setup QEMU
+        run: sudo apt-get update && sudo apt-get install -y qemu-system
+
+      - name: Setup packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Run `packer init`
+        run: packer init ${{ env.COBUNTU_HCL_PATH }}
+
+      - name: Run `packer build`
+        run: PACKER_LOG=1 packer build -force ${{ env.COBUNTU_HCL_PATH }}
+
+      - name: List files
+        run: ls -liah && tree
+
+  # TODO: validate action
+  # test-cloud-init:
+  #   name: Test Cloud-init files
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - name: "☁️ checkout repository"
+  #       uses: actions/checkout@v4
+
+  #     - name: Lint files
+  #       uses: anderssonpeter/cloud-init-linter@v1
+  #       with:
+  #         files: "**/packer/cobuntu-single/cloud-init/*"
